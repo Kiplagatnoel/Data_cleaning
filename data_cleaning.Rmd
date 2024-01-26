@@ -1,0 +1,111 @@
+---
+title: "PCA, Factor Loadings, Kmeans, Hierrachical clustering and Correlation"
+author: "Kiplagat John Noel"
+output:
+  html_document: default
+word_document: default
+date: "`r Sys.Date()`"
+---
+
+
+```{r, libraries, echo=FALSE}
+suppressPackageStartupMessages({
+library(knitr)
+library(tibble)
+library(reshape2)
+library(dplyr)
+library(tidyverse)
+library(magrittr)
+library(rstatix)
+})
+```
+
+
+
+## Original Messy Data
+
+```{r, rawData, echo=FALSE}
+
+dmap <- read.csv("chromosome_map.csv")
+kable(head(dmap))
+```
+
+
+## Data after Separating SNP column in to 2 new columns & Removing strings and parentheses from column "Chr"
+
+```{r, separate, echo=FALSE}
+dmap$SNP <- gsub("^[[:digit:]]+", "",dmap$SNP)# Remove all digits
+dmap$SNP <- sub(":", "",dmap$SNP)# Remove all double colons
+dmap$chr<- gsub("\\(.*", "", dmap$chr) 
+dmap$chr <- sub("Vu", "",dmap$chr)
+dmap <- tidyr::separate(dmap, col="SNP", into=c("allele1","allele2"),sep=">")
+kable(head(dmap))
+
+```
+
+
+
+## Replace everything after the first dot plus duplicates in column "SNP.names"
+
+```{r, replace_dots, echo=FALSE}
+dmap[,c(2:3)] <- sapply(dmap[,c(2,3)], as.numeric)
+dmap <- dmap %>% convert_as_factor(SNP.names,allele1,allele2)
+dmap$SNP.names<- gsub("\\|.*", "", dmap$SNP.names)
+dmap$SNP.names <- paste0("SNP",dmap$SNP.names)
+
+dmap <- dmap[!duplicated(dmap$SNP.names),]
+rownames(dmap) <- dmap$SNP.names
+kable(head(dmap))
+
+```
+
+
+
+## Raw Marker data
+
+```{r, markers, echo=FALSE}
+dm <- read.csv("chromosome_markers.csv")
+kable(dm[1:5,1:8])
+
+```
+
+
+
+
+## Transpose the data, Replace occurence of "X" in columns, Replace everything after the first dot plus duplicates
+
+```{r, trans_markers, echo=FALSE}
+dm <- t(dm)
+dm <- data.frame(dm)
+rownames(dm) <- sub("X", "",rownames(dm))
+
+names(dm) <- dm[1,]
+dm <- dm[-1,]
+#dm <- tibble::rownames_to_column(dm,var = "Ind")
+colnames(dm) <- paste0("SNP",colnames(dm))
+colnames(dm)<- gsub("\\|.*", "", colnames(dm))
+
+
+
+dm <- dm[,!duplicated(colnames(dm))]
+kable(dm[1:6,1:6])
+```
+
+
+## Remove occurence of "G" from column "genotype"
+
+```{r, pheno, echo=FALSE}
+pheno <- read.csv("pheno_data.csv")
+names(pheno)[1] <- "genotype"
+pheno$genotype <- sub("G", "", pheno$genotype)
+#pheno <- pheno[,c(2,1,3:10)]
+kable(head(pheno))
+
+```
+
+
+
+## Saving clean data
+
+This can be done by passing the object with cleaned data to ``` write.csv(obj) ```.
+
